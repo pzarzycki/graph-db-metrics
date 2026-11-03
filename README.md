@@ -10,11 +10,11 @@ A measurement-first framework for **characterizing arbitrary existing property g
 2. **Derived measurements:** paths, components, motifs, communities, association statistics. These require explicit projections, estimators and scope.
 3. **Interpreted semantics:** ontology, units, domain constraints, valid signatures and rule conformity. These cannot be fully inferred from labels and topology alone.
 
-See [the technical framework](docs/FRAMEWORK.md) for formulas, measurement contracts, interpretation, counterexamples, and validation requirements.
+See [the technical framework (PDF)](graph_characterization.pdf) for formulas, measurement contracts, interpretation, counterexamples, and validation requirements.
 
 ## Metric families
 
-| Layer | Required outputs |
+| Layer | Expected reporting |
 | --- | --- |
 | Population | Nodes/relationships; label-set and relationship-type frequencies |
 | Connectivity | Joint in/out-degree distribution; parallel edges; loops; components |
@@ -25,6 +25,8 @@ See [the technical framework](docs/FRAMEWORK.md) for formulas, measurement contr
 | Property values | Missingness, type mix, frequencies, quantiles, conditional distributions |
 | Dependencies | Key co-occurrence, conditional mutual information, topology-attribute coupling |
 | Semantics, optional | Concept map, units, permitted signatures, validated constraints |
+
+Applicability depends on graph scope, projection, computational budget and available domain information. Report each metric as exact, estimated, not applicable, not measured or ontology required, as appropriate.
 
 ## Measurement invariant
 
