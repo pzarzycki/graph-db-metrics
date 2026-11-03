@@ -1,0 +1,30 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Project data and generated artifacts
+/data/
+/artifacts/
+.cache/
+*.egg-info/
+build/
+*.log
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Web
+node_modules/
+dist/
+coverage/
+
+# Operating system
+.DS_Store

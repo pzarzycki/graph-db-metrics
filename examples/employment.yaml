@@ -1,0 +1,95 @@
+schema_version: '1'
+semantics:
+  status: declared
+  concepts:
+    - {cohort: company, meaning: Fictional employers operating in one city}
+    - {cohort: employee, meaning: Fictional people with one current employer}
+  rules:
+    - id: employee_identity
+      kind: unique
+      parameters: {cohort: employee, property: employee_id}
+    - id: one_employer
+      kind: cardinality
+      parameters: {relationship: works_at, direction: out, min: 1, max: 1}
+    - id: local_employment
+      kind: same_property
+      parameters: {relationship: works_at, source_property: city, target_property: city}
+    - id: hiring_after_birth
+      kind: temporal_order
+      parameters: {cohort: employee, before: birth_year, after: hired_year}
+    - id: realistic_salary
+      kind: range
+      parameters: {cohort: employee, property: salary_usd, min: 25000, max: 220000}
+targets:
+  allow_self_loops: false
+  allow_parallel_edges: false
+  nodes:
+    - id: company
+      labels: [Company]
+      count: 40
+      properties:
+        company_id: {type: string, distribution: {kind: id, prefix: CO, width: 4}}
+        name: {type: string, distribution: {kind: faker, provider: company}}
+        city:
+          type: string
+          distribution: {kind: categorical, values: [Vancouver, Toronto, Montreal, Calgary]}
+        industry:
+          type: string
+          distribution: {kind: categorical, values: [Software, Manufacturing, Consulting, Retail]}
+    - id: employee
+      labels: [Person, Employee]
+      count: 1000
+      properties:
+        employee_id: {type: string, distribution: {kind: id, prefix: EMP, width: 6}}
+        name: {type: string, distribution: {kind: faker, provider: name, locale: en_CA}}
+        city:
+          type: string
+          distribution: {kind: reference, cohort: company, property: city}
+        occupation:
+          type: string
+          distribution:
+            kind: categorical
+            values: [Software Engineer, Accountant, Sales Representative, Operations Manager]
+            weights: [4, 2, 3, 1]
+        salary_usd:
+          type: integer
+          distribution:
+            kind: conditional
+            'on': occupation
+            cases:
+              Software Engineer: {kind: integer, min: 80000, max: 190000}
+              Accountant: {kind: integer, min: 55000, max: 110000}
+              Sales Representative: {kind: integer, min: 35000, max: 100000}
+              Operations Manager: {kind: integer, min: 80000, max: 160000}
+        birth_year: {type: integer, distribution: {kind: integer, min: 1960, max: 2005}}
+        hired_year:
+          type: integer
+          distribution: {kind: derived, 'on': birth_year, random_min: 18, random_max: 40, max: 2026}
+        remote:
+          type: boolean
+          distribution: {kind: boolean, probability: 0.35}
+        skills:
+          type: list
+          presence: 0.8
+          distribution:
+            kind: conditional
+            'on': occupation
+            cases:
+              Software Engineer: {kind: constant, value: [Python, SQL, Testing]}
+              Accountant: {kind: constant, value: [Accounting, Auditing, Spreadsheets]}
+              Sales Representative: {kind: constant, value: [Negotiation, CRM, Communication]}
+              Operations Manager: {kind: constant, value: [Scheduling, Budgeting, Leadership]}
+  relationships:
+    - id: works_at
+      type: WORKS_AT
+      source: employee
+      target: company
+      count: 1000
+      out_degrees: [{degree: 1, count: 1000}]
+      properties:
+        since_year:
+          type: integer
+          distribution: {kind: copy, 'on': source_properties.hired_year}
+        contract:
+          type: string
+          distribution: {kind: categorical, values: [permanent, fixed_term], weights: [9, 1]}

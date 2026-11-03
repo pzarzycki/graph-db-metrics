@@ -1,0 +1,27 @@
+name: graph-db-metrics
+
+services:
+  neo4j:
+    image: neo4j:2026.10.1-community
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env}"
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_server_directories_import: /import
+    volumes:
+      - ./data/neo4j/data:/data
+      - ./data/neo4j/logs:/logs
+      - ./data/neo4j/import:/import
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - cypher-shell -a bolt://localhost:7687 -u neo4j -p "$${NEO4J_AUTH#neo4j/}" 'RETURN 1;' >/dev/null 2>&1
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5

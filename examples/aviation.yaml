@@ -1,0 +1,166 @@
+schema_version: '1'
+semantics:
+  status: declared
+  concepts:
+    - {cohort: airport, meaning: Fictional airports near named cities; coordinates use degrees}
+    - {cohort: airline, meaning: Fictional passenger airlines}
+    - {cohort: flight, meaning: Flights with UTC timestamps and durations derived from route distance}
+  rules:
+    - id: airport_identity
+      kind: unique
+      parameters: {cohort: airport, property: code}
+    - id: flight_identity
+      kind: unique
+      parameters: {cohort: flight, property: flight_id}
+    - id: one_departure
+      kind: cardinality
+      parameters: {relationship: departs, direction: out, min: 1, max: 1}
+    - id: one_arrival
+      kind: cardinality
+      parameters: {relationship: arrives, direction: out, min: 1, max: 1}
+    - id: one_operator
+      kind: cardinality
+      parameters: {relationship: operated_by, direction: out, min: 1, max: 1}
+    - id: departure_code_matches
+      kind: same_property
+      parameters: {relationship: departs, source_property: origin_code, target_property: code}
+    - id: arrival_code_matches
+      kind: same_property
+      parameters: {relationship: arrives, source_property: destination_code, target_property: code}
+    - id: operator_code_matches
+      kind: same_property
+      parameters: {relationship: operated_by, source_property: airline_code, target_property: code}
+    - id: arrival_after_departure
+      kind: temporal_order
+      parameters: {cohort: flight, before: departure, after: arrival}
+    - id: legal_latitude
+      kind: range
+      parameters: {cohort: airport, property: latitude, min: -90, max: 90}
+targets:
+  allow_self_loops: false
+  allow_parallel_edges: false
+  nodes:
+    - id: airport
+      labels: [Airport]
+      count: 24
+      properties:
+        code: {type: string, distribution: {kind: id, prefix: AP, width: 4}}
+        city:
+          type: string
+          distribution: {kind: categorical, values: [Vancouver, Toronto, Montreal, London, Manchester, New York, Chicago, Seattle]}
+        country:
+          type: string
+          distribution:
+            kind: conditional
+            'on': city
+            cases:
+              Vancouver: {kind: constant, value: CA}
+              Toronto: {kind: constant, value: CA}
+              Montreal: {kind: constant, value: CA}
+              London: {kind: constant, value: GB}
+              Manchester: {kind: constant, value: GB}
+              New York: {kind: constant, value: US}
+              Chicago: {kind: constant, value: US}
+              Seattle: {kind: constant, value: US}
+        latitude:
+          type: float
+          distribution:
+            kind: conditional
+            'on': city
+            cases:
+              Vancouver: {kind: uniform, min: 49.15, max: 49.30}
+              Toronto: {kind: uniform, min: 43.60, max: 43.80}
+              Montreal: {kind: uniform, min: 45.40, max: 45.60}
+              London: {kind: uniform, min: 51.40, max: 51.60}
+              Manchester: {kind: uniform, min: 53.30, max: 53.50}
+              New York: {kind: uniform, min: 40.60, max: 40.80}
+              Chicago: {kind: uniform, min: 41.80, max: 42.00}
+              Seattle: {kind: uniform, min: 47.40, max: 47.60}
+        longitude:
+          type: float
+          distribution:
+            kind: conditional
+            'on': city
+            cases:
+              Vancouver: {kind: uniform, min: -123.30, max: -123.05}
+              Toronto: {kind: uniform, min: -79.80, max: -79.40}
+              Montreal: {kind: uniform, min: -73.90, max: -73.60}
+              London: {kind: uniform, min: -0.50, max: -0.10}
+              Manchester: {kind: uniform, min: -2.40, max: -2.10}
+              New York: {kind: uniform, min: -74.00, max: -73.70}
+              Chicago: {kind: uniform, min: -88.00, max: -87.60}
+              Seattle: {kind: uniform, min: -122.40, max: -122.20}
+    - id: airline
+      labels: [Airline]
+      count: 8
+      properties:
+        code: {type: string, distribution: {kind: id, prefix: AL, width: 3}}
+        name: {type: string, distribution: {kind: template, template: 'Example Airways {index}'}}
+    - id: flight
+      labels: [Flight]
+      count: 500
+      properties:
+        flight_id: {type: string, distribution: {kind: id, prefix: FL, width: 6}}
+        origin_code: {type: string, distribution: {kind: reference, cohort: airport, property: code}}
+        destination_code:
+          type: string
+          distribution: {kind: reference, cohort: airport, property: code, exclude_property: origin_code}
+        airline_code: {type: string, distribution: {kind: reference, cohort: airline, property: code}}
+        origin_latitude:
+          type: float
+          distribution: {kind: lookup, cohort: airport, match_property: code, 'on': origin_code, property: latitude}
+        origin_longitude:
+          type: float
+          distribution: {kind: lookup, cohort: airport, match_property: code, 'on': origin_code, property: longitude}
+        destination_latitude:
+          type: float
+          distribution: {kind: lookup, cohort: airport, match_property: code, 'on': destination_code, property: latitude}
+        destination_longitude:
+          type: float
+          distribution: {kind: lookup, cohort: airport, match_property: code, 'on': destination_code, property: longitude}
+        distance_km:
+          type: float
+          distribution: {kind: distance_km, coordinates: [origin_latitude, origin_longitude, destination_latitude, destination_longitude]}
+        duration_minutes:
+          type: integer
+          distribution: {kind: derived, 'on': distance_km, multiplier: 0.075, offset: 30}
+        departure:
+          type: datetime
+          distribution: {kind: datetime, min: '2026-01-01T00:00:00+00:00', max: '2026-12-31T00:00:00+00:00'}
+        arrival:
+          type: datetime
+          distribution: {kind: datetime_offset, 'on': departure, minutes_property: duration_minutes}
+        aircraft:
+          type: string
+          distribution: {kind: categorical, values: [A320, B737, E190], weights: [5, 4, 1]}
+        capacity:
+          type: integer
+          distribution:
+            kind: conditional
+            'on': aircraft
+            cases:
+              A320: {kind: constant, value: 186}
+              B737: {kind: constant, value: 189}
+              E190: {kind: constant, value: 100}
+        passengers:
+          type: integer
+          distribution: {kind: derived, 'on': capacity, multiplier: 0.8, random_min: -10, random_max: 10}
+  relationships:
+    - id: departs
+      type: DEPARTS_FROM
+      source: flight
+      target: airport
+      count: 500
+      out_degrees: [{degree: 1, count: 500}]
+    - id: arrives
+      type: ARRIVES_AT
+      source: flight
+      target: airport
+      count: 500
+      out_degrees: [{degree: 1, count: 500}]
+    - id: operated_by
+      type: OPERATED_BY
+      source: flight
+      target: airline
+      count: 500
+      out_degrees: [{degree: 1, count: 500}]
